@@ -1,5 +1,5 @@
 function copyStyle() {
-    // copy the style from :hover to l-l-l-hover
+    // copy the style from :hover to COLLAB-hover
     var newstyle = '';
     var styles = document.styleSheets;
     for(var i=0, len=styles.length; i < len; i++) {
@@ -14,7 +14,7 @@ function copyStyle() {
         
             var rule = rules[j];
             if(rule && rule.selectorText && rule.selectorText.indexOf(':hover') > -1){
-                newstyle += rule.cssText.replace(/:hover/g, '.l-l-l-hover');
+                newstyle += rule.cssText.replace(/:hover/g, '.COLLAB-hover');
             }
         }
     }
@@ -129,14 +129,14 @@ function dispatchSerialEvent (str) {
     }
     if (obj.type === 'mouseover') {
         // console.log('mouseenter');
-        $(target).parents().not('.l-l-l-hover').addClass('l-l-l-hover');
+        $(target).parents().not('.COLLAB-hover').addClass('COLLAB-hover');
         // console.log(obj.target['-element'], target);
     } else if (obj.type === 'mouseout') {
-        var elems = $('.l-l-l-hover');
+        var elems = $('.COLLAB-hover');
         if (relatedTarget) {
             elems = elems.not($(relatedTarget).parents());
         }
-        elems.removeClass('l-l-l-hover');
+        elems.removeClass('COLLAB-hover');
     }
     if (event) {
         event['-cobrowse'] = true;
@@ -216,3 +216,37 @@ document.addEventListener('DOMContentLoaded', copyStyle, true);
 function stop () {
     location.reload(true);
 }
+
+// ================== New code =======================
+
+var controller;
+
+chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
+    switch (message.action) {
+        case 'dispatchSerialEvent':
+            break;
+        case 'controlChanged':
+            // Some user has obtained control
+            break;
+        case 'disconnected':
+            // A user disconnected. The session cannot continue if the host is disconnected.
+            break;
+    }
+});
+
+var cursors = {};
+function showCursorAt(id, x, y) {
+    if (!cursors[id]) {
+        cursors[id] = $('<div>').addClass('COLLAB-cursor');
+    }
+    cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (id * 45) + 'deg)'});
+    $(document.body).append(cursors[id]);
+}
+
+window.addEventListener('mousemove', function (event) {
+    var location = {x: event.pageX, y: event.pageY};
+    showCursorAt(0, location.x - 100, location.y - 100);
+    showCursorAt(1, location.x - 100, location.y + 100);
+    showCursorAt(2, location.x + 100, location.y - 100);
+    showCursorAt(3, location.x + 100, location.y + 100);
+}, true);
