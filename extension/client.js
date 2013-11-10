@@ -60,10 +60,6 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
 
 // chrome.extension.sendMessage({ action: 'clientReady' });
 
-function getPageSource() {
-    return document.documentElement.outerHTML;
-}
-
 function removeAllScripts() {
     $('script').remove();
     $('style').remove(); // Maybe hover should remain?
@@ -77,7 +73,7 @@ function showCursorAt(id, x, y) {
     }
     var num = getSenderNumber(id);
     cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (num * 45) + 'deg)'});
-    $(document.body).append(cursors[id]);
+    $(document.body).after(cursors[id]);
 }
 
 function removeCursor(id) {

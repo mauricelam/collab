@@ -7,6 +7,12 @@ var tabIds = {};
 
 var hostTabs = {};
 
+function hostifyTab(tabid) {
+    chrome.tabs.executeScript(tabid, { file: 'jquery.js' });
+    chrome.tabs.executeScript(tabid, { file: 'inject.js' });
+    chrome.tabs.insertCSS(tabid, { file: 'styles.css' });
+}
+
 function createRoom(tabid, room) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
     socket.emit('handshake', { room: room, create: true });
@@ -23,6 +29,7 @@ function createRoom(tabid, room) {
         if (!data.new_room) {
             throw 'Creating room should be new room';
         }
+        hostifyTab(tabid);
         // chrome.tabs.captureVisibleTab(tab.windowId, {}, function(dataUrl) {
         //     socket.emit('pageimage', { source: dataUrl });
         // });
@@ -45,7 +52,8 @@ function createRoom(tabid, room) {
 }
 
 chrome.tabs.onUpdated.addListener(function (tabid, change, tab) {
-    if (tabid in hostTabs) {
+    if (change.status === 'complete' && tabid in hostTabs) {
+        hostifyTab(tabid);
         updateScreenFromHost(tabid);
     }
 });

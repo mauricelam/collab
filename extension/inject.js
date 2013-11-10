@@ -4,7 +4,10 @@ var controller;
 var parties = {};
 var numConnections = 0;
 
+var lastMove = 0;
 window.addEventListener('mousemove', function (event) {
+    if (event.timestamp - lastMove < 100)
+        return;
     chrome.extension.sendMessage({
         action: 'broadcast',
         payload: {
@@ -13,7 +16,14 @@ window.addEventListener('mousemove', function (event) {
             y: event.pageY
         }
     });
+    lastMove = event.timestamp;
 }, true);
+
+var lastOuterHTML;
+window.setInterval(function() {
+    if (shouldUpdate())
+        updateHTML();
+}, 500);
 
 function getSenderNumber(id) {
     if (!(id in parties)) {
@@ -86,8 +96,19 @@ var ignoreTags = {
     'SCRIPT': true,
     'STYLE': true,
     'NOSCRIPT': true,
-    'LINK': true
+    'LINK': true,
+    'TITLE': true
 };
+
+function shouldUpdate() {
+    // var cursors = $('.COLLAB-cursor');
+    // cursors.detach();
+    var outerHTML = document.body.outerHTML;
+    var should = outerHTML !== lastOuterHTML;
+    lastOuterHTML = outerHTML;
+    // $('body').append(cursors);
+    return should;
+}
 
 function getPageSource() {
     var styles = {};
@@ -102,6 +123,8 @@ function getPageSource() {
     });
 
     var temp = $('<div>' + document.documentElement.outerHTML + '</div>');
+
+    temp.find('.COLLAB-cursor').remove();
 
     temp.find('img').each(function() {
         this.src = transformURL(this.src);
@@ -119,6 +142,7 @@ function getPageSource() {
         for (var s in style) {
             this.style[s] = style[s];
         }
+        $(this).val($(this).val());
     });
 
     console.log('Parsing took', Date.now() - profile);
@@ -133,7 +157,7 @@ function showCursorAt(id, x, y) {
     }
     var num = getSenderNumber(id);
     cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (num * 45) + 'deg)'});
-    $(document.body).append(cursors[id]);
+    $(document.body).after(cursors[id]);
 }
 
 function removeCursor(id) {
