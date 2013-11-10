@@ -5,9 +5,9 @@ var serverURL = 'http://murmuring-brook-3141.herokuapp.com';
 var clientIds = {};
 var tabIds = {};
 
-function createRoom(tabid, room) {
+function createRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: room, create: true });
+    socket.emit('handshake', { room: room, create: true, name: name });
     console.log('emitted');
     socket.on('handshake', function(data) {
         if (data.error) {
@@ -44,9 +44,9 @@ function createRoom(tabid, room) {
     setupSocket(tabid);
 }
 
-function joinRoom(tabid, room) {
+function joinRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: room });
+    socket.emit('handshake', { room: room, name: name});
     socket.on('handshake', function(data) {
         clientIds[tabid] = data.client_key;
         tabIds[data.client_key] = tabid;
@@ -98,11 +98,11 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
             break;
         case 'joinRoomBtn':
             chrome.tabs.query({active: true, currentWindow: true}, function (tab) {
-                chrome.tabs.update(tab[0].id, { url: chrome.extension.getURL('client.html#' + message.room) });
+                chrome.tabs.update(tab[0].id, { url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
             });
             break;
         case 'joinRoom':
-            joinRoom(sender.tab.id, message.room);
+            joinRoom(sender.tab.id, message.room, message.name);
             break;
         case 'broadcast':
             console.log('broadcast: ', message);

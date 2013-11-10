@@ -86,8 +86,9 @@ function removeCursor(id) {
     delete cursors[id];
 }
 
-chrome.extension.sendMessage({action: 'joinRoom', room: location.hash.substr(1)});
-
+room = location.hash.substr(1).split("&")[0];
+name = location.hash.substr(1).split("&")[1];
+chrome.extension.sendMessage({action: 'joinRoom', room: room, name: name});
 // =============== Drawing code =================
 
 var drawing = false;
