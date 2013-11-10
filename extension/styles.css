@@ -5,6 +5,8 @@
   width: 21px;
   height: 30px;
   z-index: 99999999;
+  margin-left: -5px;
+  margin-top: -5px;
 }
 
 .COLLAB-draw {
