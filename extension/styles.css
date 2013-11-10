@@ -6,3 +6,16 @@
   height: 30px;
   z-index: 99999999;
 }
+
+.COLLAB-draw {
+  position: absolute;
+  z-index: 99999998;
+  top: 0;
+  left: 0;
+}
+
+.COLLAB-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+}

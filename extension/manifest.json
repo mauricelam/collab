@@ -1,12 +1,12 @@
 {
-  "name": "CoBrowse",
+  "name": "Collab",
   "version": "0.1",
   "manifest_version": 2,
   "description": "Collaboratively surf the web. ",
   "content_scripts":[
     {
         "matches": [ "http://*/*", "https://*/*", "*://*/*" ],
-        "js": ["jquery.js", "socket.io.js", "inject.js"],
+        "js": ["jquery.js", "inject.js"],
         "css": ["styles.css"],
         "run_at": "document_start"
     }
@@ -19,7 +19,7 @@
     "default_title": "Start real time browsing"      // optional; shown in tooltip
   },
   "background": {
-      "scripts": ["bcsocket.js", "webclient/share.js", "jquery.js", "background.js"],
+      "scripts": ["jquery.js", "socket.io.js", "background.js"],
       "persistent": true
   },
   "icons": {
@@ -29,7 +29,8 @@
   },
   "permissions": [
     "tabs",
-    "<all_urls>"
+    "<all_urls>",
+    "pageCapture"
   ]
 }
 
