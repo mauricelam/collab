@@ -27,7 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.action) {
         case 'mousemove':
-            showCursorAt(message.data.sender, message.data.x, message.data.y);
+            console.log('mouse move');
+            showCursorAt(message.sender, message.x, message.y);
             break;
         case 'controlChanged':
             // Some user has obtained control

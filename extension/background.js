@@ -5,13 +5,14 @@ var serverURL = 'http://murmuring-brook-3141.herokuapp.com';
 var clientIds = {};
 var tabIds = {};
 
-function createRoom(tabid) {
+function createRoom(tabid, room) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: 'testroom', create: true });
+    socket.emit('handshake', { room: room, create: true });
     console.log('emitted');
     socket.on('handshake', function(data) {
         if (data.error) {
             alert('Unable to initialize');
+            console.log(data.error);
             return;
         }
         clientIds[tabid] = data.client_key;
@@ -43,9 +44,9 @@ function createRoom(tabid) {
     setupSocket(tabid);
 }
 
-function joinRoom(tabid) {
+function joinRoom(tabid, room) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: 'testroom' });
+    socket.emit('handshake', { room: room });
     socket.on('handshake', function(data) {
         clientIds[tabid] = data.client_key;
         tabIds[data.client_key] = tabid;
@@ -92,16 +93,16 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
         case 'createRoom':
             chrome.tabs.query({active: true, currentWindow: true}, function (tab) {
                 console.log('Create room active', tab);
-                createRoom(tab[0].id);
+                createRoom(tab[0].id, message.room);
             });
             break;
         case 'joinRoomBtn':
             chrome.tabs.query({active: true, currentWindow: true}, function (tab) {
-                chrome.tabs.update(tab[0].id, { url: chrome.extension.getURL('client.html') });
+                chrome.tabs.update(tab[0].id, { url: chrome.extension.getURL('client.html#' + message.room) });
             });
             break;
         case 'joinRoom':
-            joinRoom(sender.tab.id);
+            joinRoom(sender.tab.id, message.room);
             break;
         case 'broadcast':
             console.log('broadcast: ', message);

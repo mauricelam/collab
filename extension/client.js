@@ -3,10 +3,11 @@ var id = Math.floor(Math.random() * 1e9);
 var url = 'http://murmuring-brook-3141.herokuapp.com';
 
 window.addEventListener('mousemove', function (event) {
+    console.log('mouse move');
     chrome.extension.sendMessage({
-        action: 'emit',
-        event: 'mousemove',
+        action: 'broadcast',
         payload: {
+            action: 'mousemove',
             x: event.pageX,
             y: event.pageY
         }
@@ -40,7 +41,7 @@ var screen = $('#screen');
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.action) {
         case 'mousemove':
-            showCursorAt(getSenderNumber(message.data.sender), message.data.x, message.data.y);
+            showCursorAt(message.data.sender, message.data.x, message.data.y);
             break;
         case 'applyHTML':
             document.body.innerHTML = message.html;
@@ -72,18 +73,20 @@ function removeAllScripts() {
 var cursors = {};
 function showCursorAt(id, x, y) {
     if (!cursors[id]) {
-        cursors[id] = $('<div>').addClass('COLLAB-cursor').attr('id', 'COLLAB-cursor-' + id);
+        cursors[id] = $('<div>').addClass('COLLAB-cursor');
     }
-    cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (id * 45) + 'deg)'});
+    var num = getSenderNumber(id);
+    cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (num * 45) + 'deg)'});
     $(document.body).append(cursors[id]);
 }
 
 function removeCursor(id) {
-    cursors[id].remove();
+    if (cursors[id])
+        cursors[id].remove();
     delete cursors[id];
 }
 
-chrome.extension.sendMessage({action: 'joinRoom'});
+chrome.extension.sendMessage({action: 'joinRoom', room: location.hash.substr(1)});
 
 // =============== Drawing code =================
 
