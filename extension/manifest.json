@@ -16,7 +16,8 @@
       "19": "images/button.png",           // optional
       "38": "images/button.png"            // optional
     },
-    "default_title": "Start real time browsing"      // optional; shown in tooltip
+    "default_title": "Start collaborative browsing",      // optional; shown in tooltip
+    "default_popup": "popup.html"
   },
   "background": {
       "scripts": ["jquery.js", "socket.io.js", "background.js"],

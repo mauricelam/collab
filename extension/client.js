@@ -35,11 +35,7 @@ function getSenderNumber(id) {
     return parties[id];
 }
 
-var screen;
-
-document.addEventListener('DOMContentLoaded', function() {
-    screen = $('#screen');
-});
+var screen = $('#screen');
 
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.action) {
@@ -87,7 +83,7 @@ function removeCursor(id) {
     delete cursors[id];
 }
 
-
+chrome.extension.sendMessage({action: 'joinRoom'});
 
 // =============== Drawing code =================
 
@@ -114,5 +110,4 @@ window.addEventListener('keydown', function(event) {
         }
     }
 }, true);
-
 
