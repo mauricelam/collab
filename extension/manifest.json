@@ -19,7 +19,7 @@
     "default_title": "Start real time browsing"      // optional; shown in tooltip
   },
   "background": {
-      "scripts": ["socket.io.js", "jquery.js", "background.js"],
+      "scripts": ["bcsocket.js", "webclient/share.js", "jquery.js", "background.js"],
       "persistent": true
   },
   "icons": {

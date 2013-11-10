@@ -1,3 +1,7 @@
+sharejs.open('hello', 'text', 'http://sharejs.org:8000', function(doc, error) {
+    alert("Hi");
+});
+
 function copyStyle() {
     // copy the style from :hover to COLLAB-hover
     var newstyle = '';
