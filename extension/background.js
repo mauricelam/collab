@@ -13,9 +13,9 @@ function hostifyTab(tabid) {
     chrome.tabs.insertCSS(tabid, { file: 'styles.css' });
 }
 
-function createRoom(tabid, room) {
+function createRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: room, create: true });
+    socket.emit('handshake', { room: room, create: true, name: name });
     console.log('emitted');
     socket.on('handshake', function(data) {
         if (data.error) {
@@ -67,9 +67,9 @@ function updateScreenFromHost(tabid) {
     });
 }
 
-function joinRoom(tabid, room) {
+function joinRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
-    socket.emit('handshake', { room: room });
+    socket.emit('handshake', { room: room, name: name});
     socket.on('handshake', function(data) {
         clientIds[tabid] = data.client_key;
         tabIds[data.client_key] = tabid;
@@ -120,10 +120,10 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
             });
             break;
         case 'joinRoomBtn':
-            chrome.tabs.create({ url: chrome.extension.getURL('client.html#' + message.room) });
+            chrome.tabs.create({ url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
             break;
         case 'joinRoom':
-            joinRoom(sender.tab.id, message.room);
+            joinRoom(sender.tab.id, message.room, message.name);
             break;
         case 'broadcast':
             if (window.logbroadcast)
