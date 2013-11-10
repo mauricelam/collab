@@ -23,7 +23,7 @@ var lastOuterHTML;
 window.setInterval(function() {
     if (shouldUpdate())
         updateHTML();
-}, 500);
+}, 2000);
 
 function getSenderNumber(id) {
     if (!(id in parties)) {
@@ -55,6 +55,9 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
         case 'mousemove':
             showCursorAt(message.sender, message.x, message.y);
             break;
+        case 'click':
+            clickElementWithId(message.id);
+            break;
         case 'controlChanged':
             // Some user has obtained control
             break;
@@ -70,6 +73,10 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
     }
 });
 
+function clickElementWithId(id) {
+    $('*[COLLAB-id=' + id + ']').click();
+}
+
 function transformURL(url) {
     if (url.indexOf('//') === 0) {
         url = location.protocol + url;
@@ -79,13 +86,16 @@ function transformURL(url) {
 
 var excludeCSS = {'cssText': true, 'webkitBackgroundSize': true};
 
+var defaultStyles = {};
+
 function css(a){
     var o = {};
-    var rules = window.getComputedStyle(a.get(0));
-    for(var r in rules) {
+    var rules = window.getComputedStyle(a);
+    for (var r in rules) {
         if (isNaN(parseFloat(r)) || !isFinite(r))
-            if (typeof rules[r] === "string" && rules[r].length > 0 && !(r in excludeCSS)) {
-                o[r] = rules[r];
+            if (typeof rules[r] === 'string' && rules[r].length > 0 && !(r in excludeCSS)) {
+                if (rules[r] !== defaultStyles[r])
+                    o[r] = rules[r];
             }
     }
     return o;
@@ -101,12 +111,9 @@ var ignoreTags = {
 };
 
 function shouldUpdate() {
-    // var cursors = $('.COLLAB-cursor');
-    // cursors.detach();
     var outerHTML = document.body.outerHTML;
     var should = outerHTML !== lastOuterHTML;
     lastOuterHTML = outerHTML;
-    // $('body').append(cursors);
     return should;
 }
 
@@ -115,35 +122,46 @@ function getPageSource() {
     var id = 0;
     var profile = Date.now();
     console.log('browser parse start');
-    $('*').each(function() {
-        if (this.tagName in ignoreTags)
-            return;
-        styles[id] = css($(this));
-        this.setAttribute('COLLAB-id', id++);
-    });
+    var allElems = document.getElementsByTagName('*');
+    for (var i = 0, count = allElems.length; i < count; i++) {
+        var elem = allElems[i];
+        if (elem.tagName in ignoreTags)
+            continue;
+        styles[id] = css(elem);
+        elem.setAttribute('COLLAB-id', id++);
+    }
+    console.log('a', Date.now() - profile);
 
     var temp = $('<div>' + document.documentElement.outerHTML + '</div>');
 
     temp.find('.COLLAB-cursor').remove();
+    console.log('b', Date.now() - profile);
 
     temp.find('img').each(function() {
         this.src = transformURL(this.src);
     });
+    console.log('c', Date.now() - profile);
     temp.find('link').each(function() {
         this.href = transformURL(this.href);
     });
+    console.log('d', Date.now() - profile);
     temp.find('a').each(function() {
         this.href = transformURL(this.href);
     });
-    temp.find('*').each(function() {
-        if (this.tagName in ignoreTags)
-            return;
-        var style = styles[this.getAttribute('COLLAB-id')];
-        for (var s in style) {
-            this.style[s] = style[s];
+    console.log('e', Date.now() - profile);
+    var allElems = temp[0].getElementsByTagName('*');
+    for (i = 0, count = allElems.length; i < count; i++) {
+        var elem = allElems[i];
+        if (elem.tagName in ignoreTags)
+            continue;
+        var style = styles[elem.getAttribute('COLLAB-id')];
+        for (var r in style) {
+            elem.style[r] = style[r];
         }
-        $(this).val($(this).val());
-    });
+        if (elem.value) {
+            elem.value = elem.value;
+        }
+    }
 
     console.log('Parsing took', Date.now() - profile);
 

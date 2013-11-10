@@ -2,7 +2,10 @@ var id = Math.floor(Math.random() * 1e9);
 
 var url = 'http://murmuring-brook-3141.herokuapp.com';
 
+var lastMove = 0;
 window.addEventListener('mousemove', function (event) {
+    if (event.timestamp - lastMove < 100)
+        return;
     chrome.extension.sendMessage({
         action: 'broadcast',
         payload: {
@@ -11,6 +14,7 @@ window.addEventListener('mousemove', function (event) {
             y: event.pageY
         }
     });
+    lastMove = event.timestamp;
 }, true);
 
 console.log('client code loaded');
@@ -20,6 +24,16 @@ var parties = {};
 var numConnections = 0;
 
 window.addEventListener('click', function(event) {
+    var id = event.target.getAttribute('COLLAB-id');
+    chrome.extension.sendMessage({
+        action: 'broadcast',
+        payload: {
+            action: 'click',
+            x: event.pageX,
+            y: event.pageY,
+            id: id
+        }
+    });
     event.preventDefault();
 }, true);
 

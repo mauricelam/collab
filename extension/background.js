@@ -45,7 +45,7 @@ function createRoom(tabid, room) {
         //     // ss.createBlobReadStream(mhtml).pipe(stream);
         // });
         hostTabs[tabid] = true;
-        updateScreenFromHost(tabid);
+        // updateScreenFromHost(tabid);
 
     });
     setupSocket(tabid);
@@ -54,7 +54,7 @@ function createRoom(tabid, room) {
 chrome.tabs.onUpdated.addListener(function (tabid, change, tab) {
     if (change.status === 'complete' && tabid in hostTabs) {
         hostifyTab(tabid);
-        updateScreenFromHost(tabid);
+        // updateScreenFromHost(tabid);
     }
 });
 
