@@ -4,6 +4,27 @@ var controller;
 var parties = {};
 var numConnections = 0;
 
+var lastMove = 0;
+window.addEventListener('mousemove', function (event) {
+    if (event.timestamp - lastMove < 100)
+        return;
+    chrome.extension.sendMessage({
+        action: 'broadcast',
+        payload: {
+            action: 'mousemove',
+            x: event.pageX,
+            y: event.pageY
+        }
+    });
+    lastMove = event.timestamp;
+}, true);
+
+var lastOuterHTML;
+window.setInterval(function() {
+    if (shouldUpdate())
+        updateHTML();
+}, 500);
+
 function getSenderNumber(id) {
     if (!(id in parties)) {
         parties[id] = numConnections++;
@@ -14,6 +35,11 @@ function getSenderNumber(id) {
 function updateScreen() {
     // console.log('update screen');
     // chrome.extension.sendMessage({action: 'updateScreen'});
+}
+
+function updateHTML() {
+    var source = getPageSource();
+    chrome.extension.sendMessage({ action: 'updateHTML', source: source });
 }
 
 window.addEventListener('mousewheel', updateScreen, true);
@@ -27,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function() {
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.action) {
         case 'mousemove':
-            console.log('mouse move');
             showCursorAt(message.sender, message.x, message.y);
             break;
         case 'controlChanged':
@@ -66,15 +91,40 @@ function css(a){
     return o;
 }
 
+var ignoreTags = {
+    'META': true,
+    'SCRIPT': true,
+    'STYLE': true,
+    'NOSCRIPT': true,
+    'LINK': true,
+    'TITLE': true
+};
+
+function shouldUpdate() {
+    // var cursors = $('.COLLAB-cursor');
+    // cursors.detach();
+    var outerHTML = document.body.outerHTML;
+    var should = outerHTML !== lastOuterHTML;
+    lastOuterHTML = outerHTML;
+    // $('body').append(cursors);
+    return should;
+}
+
 function getPageSource() {
     var styles = {};
     var id = 0;
+    var profile = Date.now();
+    console.log('browser parse start');
     $('*').each(function() {
+        if (this.tagName in ignoreTags)
+            return;
         styles[id] = css($(this));
         this.setAttribute('COLLAB-id', id++);
     });
 
     var temp = $('<div>' + document.documentElement.outerHTML + '</div>');
+
+    temp.find('.COLLAB-cursor').remove();
 
     temp.find('img').each(function() {
         this.src = transformURL(this.src);
@@ -86,11 +136,16 @@ function getPageSource() {
         this.href = transformURL(this.href);
     });
     temp.find('*').each(function() {
+        if (this.tagName in ignoreTags)
+            return;
         var style = styles[this.getAttribute('COLLAB-id')];
         for (var s in style) {
             this.style[s] = style[s];
         }
+        $(this).val($(this).val());
     });
+
+    console.log('Parsing took', Date.now() - profile);
 
     return temp.html();
 }
@@ -102,7 +157,7 @@ function showCursorAt(id, x, y) {
     }
     var num = getSenderNumber(id);
     cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (num * 45) + 'deg)'});
-    $(document.body).append(cursors[id]);
+    $(document.body).after(cursors[id]);
 }
 
 function removeCursor(id) {

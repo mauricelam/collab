@@ -3,7 +3,6 @@ var id = Math.floor(Math.random() * 1e9);
 var url = 'http://murmuring-brook-3141.herokuapp.com';
 
 window.addEventListener('mousemove', function (event) {
-    console.log('mouse move');
     chrome.extension.sendMessage({
         action: 'broadcast',
         payload: {
@@ -41,7 +40,8 @@ var screen = $('#screen');
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
     switch (message.action) {
         case 'mousemove':
-            showCursorAt(message.data.sender, message.data.x, message.data.y);
+            // console.log('client mouse move');
+            showCursorAt(message.sender, message.x, message.y);
             break;
         case 'applyHTML':
             document.body.innerHTML = message.html;
@@ -60,14 +60,10 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
 
 // chrome.extension.sendMessage({ action: 'clientReady' });
 
-function getPageSource() {
-    return document.documentElement.outerHTML;
-}
-
 function removeAllScripts() {
     $('script').remove();
     $('style').remove(); // Maybe hover should remain?
-    $('link').remove();
+    $('link:not(#COLLAB-stylesheet)').remove();
 }
 
 var cursors = {};
@@ -77,7 +73,7 @@ function showCursorAt(id, x, y) {
     }
     var num = getSenderNumber(id);
     cursors[id].css({'top': y, 'left': x, '-webkit-filter': 'hue-rotate(' + (num * 45) + 'deg)'});
-    $(document.body).append(cursors[id]);
+    $(document.body).after(cursors[id]);
 }
 
 function removeCursor(id) {

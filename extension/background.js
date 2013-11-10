@@ -5,6 +5,14 @@ var serverURL = 'http://murmuring-brook-3141.herokuapp.com';
 var clientIds = {};
 var tabIds = {};
 
+var hostTabs = {};
+
+function hostifyTab(tabid) {
+    chrome.tabs.executeScript(tabid, { file: 'jquery.js' });
+    chrome.tabs.executeScript(tabid, { file: 'inject.js' });
+    chrome.tabs.insertCSS(tabid, { file: 'styles.css' });
+}
+
 function createRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
     socket.emit('handshake', { room: room, create: true, name: name });
@@ -21,6 +29,7 @@ function createRoom(tabid, room, name) {
         if (!data.new_room) {
             throw 'Creating room should be new room';
         }
+        hostifyTab(tabid);
         // chrome.tabs.captureVisibleTab(tab.windowId, {}, function(dataUrl) {
         //     socket.emit('pageimage', { source: dataUrl });
         // });
@@ -35,13 +44,27 @@ function createRoom(tabid, room, name) {
         //     // var stream = ss.createBlobReadStream(mhtml);
         //     // ss.createBlobReadStream(mhtml).pipe(stream);
         // });
-        chrome.tabs.sendMessage(tabid, {action: 'getPageSource'}, function(source) {
-            // console.log('send page source', source);
-            socket.emit('htmlsource', { source: source });
-        });
+        hostTabs[tabid] = true;
+        updateScreenFromHost(tabid);
 
     });
     setupSocket(tabid);
+}
+
+chrome.tabs.onUpdated.addListener(function (tabid, change, tab) {
+    if (change.status === 'complete' && tabid in hostTabs) {
+        hostifyTab(tabid);
+        updateScreenFromHost(tabid);
+    }
+});
+
+function updateScreenFromHost(tabid) {
+    var socket = sockets[tabid];
+    if (!socket) return;
+    chrome.tabs.sendMessage(tabid, {action: 'getPageSource'}, function(source) {
+        // console.log('send page source', source);
+        socket.emit('htmlsource', { source: source });
+    });
 }
 
 function joinRoom(tabid, room, name) {
@@ -97,15 +120,14 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
             });
             break;
         case 'joinRoomBtn':
-            chrome.tabs.query({active: true, currentWindow: true}, function (tab) {
-                chrome.tabs.update(tab[0].id, { url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
-            });
+            chrome.tabs.create({ url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
             break;
         case 'joinRoom':
             joinRoom(sender.tab.id, message.room, message.name);
             break;
         case 'broadcast':
-            console.log('broadcast: ', message);
+            if (window.logbroadcast)
+                console.log('broadcast: ', message);
             if (socket) {
                 message.payload.sender = clientIds[sender.tab.id];
                 socket.emit('broadcast', message.payload);
@@ -123,6 +145,12 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
                 chrome.tabs.captureVisibleTab(sender.tab.windowId, {}, function(dataUrl) {
                     socket.emit('pageimage', { source: dataUrl });
                 });
+            }
+            break;
+        case 'updateHTML':
+            if (socket) {
+                console.log('update HTML source');
+                socket.emit('htmlsource', { source: message.source });
             }
             break;
         // case 'sendEvent':
