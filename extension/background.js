@@ -9,7 +9,8 @@ var hostTabs = {};
 
 function hostifyTab(tabid) {
     chrome.tabs.executeScript(tabid, { file: 'jquery.js' });
-    chrome.tabs.executeScript(tabid, { file: 'inject.js' });
+    chrome.tabs.executeScript(tabid, { file: 'cursor.js' });
+    chrome.tabs.executeScript(tabid, { file: 'host.js' });
     chrome.tabs.insertCSS(tabid, { file: 'styles.css' });
 }
 
@@ -30,23 +31,7 @@ function createRoom(tabid, room, name) {
             throw 'Creating room should be new room';
         }
         hostifyTab(tabid);
-        // chrome.tabs.captureVisibleTab(tab.windowId, {}, function(dataUrl) {
-        //     socket.emit('pageimage', { source: dataUrl });
-        // });
-        // chrome.pageCapture.saveAsMHTML({tabId: tabid}, function(mhtml) {
-        //     var reader = new FileReader();
-        //     reader.onloadend = function () {
-        //         var url = reader.result;
-        //         console.log(url);
-        //         // socket.emit('htmlsource', { source: url });
-        //     };
-        //     reader.readAsDataURL(mhtml);
-        //     // var stream = ss.createBlobReadStream(mhtml);
-        //     // ss.createBlobReadStream(mhtml).pipe(stream);
-        // });
         hostTabs[tabid] = true;
-        // updateScreenFromHost(tabid);
-
     });
     setupSocket(tabid);
 }
@@ -54,18 +39,24 @@ function createRoom(tabid, room, name) {
 chrome.tabs.onUpdated.addListener(function (tabid, change, tab) {
     if (change.status === 'complete' && tabid in hostTabs) {
         hostifyTab(tabid);
-        // updateScreenFromHost(tabid);
     }
 });
 
-function updateScreenFromHost(tabid) {
-    var socket = sockets[tabid];
-    if (!socket) return;
-    chrome.tabs.sendMessage(tabid, {action: 'getPageSource'}, function(source) {
-        // console.log('send page source', source);
-        socket.emit('htmlsource', { source: source });
-    });
-}
+chrome.tabs.onRemoved.addListener(function (tabid, removeInfo) {
+    if (tabid in hostTabs) {
+        console.log('close room');
+        chrome.extension.sendMessage({action: 'closeRoom', tabid: tabid});
+    }
+});
+
+// function updateScreenFromHost(tabid) {
+//     var socket = sockets[tabid];
+//     if (!socket) return;
+//     chrome.tabs.sendMessage(tabid, {action: 'getPageSource'}, function(source) {
+//         // console.log('send page source', source);
+//         socket.emit('htmlsource', { source: source });
+//     });
+// }
 
 function joinRoom(tabid, room, name) {
     var socket = sockets[tabid] = io.connect(serverURL, {'force new connection': true});
@@ -77,12 +68,8 @@ function joinRoom(tabid, room, name) {
         if (data.new_room) {
             throw 'Join room does not exist';
         }
-        chrome.tabs.sendMessage(tabid, { action: 'applyHTML', html: data.source });
-        // chrome.tabs.update(tabid, { url: chrome.extension.getURL('client.html') }, function() {
-        //     window.setTimeout(function() {
-        //     }, 1000);
-        // });
-
+        // console.log('datasource', data);
+        chrome.tabs.sendMessage(tabid, { action: 'applyHTML', bundle: data.source });
     });
     setupSocket(tabid);
 }
@@ -90,28 +77,25 @@ function joinRoom(tabid, room, name) {
 function setupSocket(tabid) {
     var socket = sockets[tabid];
     socket.on('htmlsource', function(data) {
-        chrome.tabs.sendMessage(tabid, {action: 'applyHTML', html: data});
+        console.log('htmlsource', data);
+        chrome.tabs.sendMessage(tabid, {action: 'applyHTML', bundle: data});
     });
-    socket.on('pageimage', function(data) {
-        chrome.tabs.sendMessage(tabid, {action: 'showImage', image: data});
-    });
-    socket.on('error', function(data){
-        console.log('error', data);
-    });
-    // socket.on('action', function(data) {
-    //     chrome.tabs.sendMessage(tabid, {action: 'dispatchSerialEvent', data: data});
-    //     // dispatchSerialEvent(data);
+    // socket.on('pageimage', function(data) {
+    //     chrome.tabs.sendMessage(tabid, {action: 'showImage', image: data});
     // });
-    socket.on('mousemove', function(data) {
-        chrome.tabs.sendMessage(tabid, {action: 'mousemove', data: data});
+    socket.on('error', function(data){
+        console.warn('error', data);
     });
     socket.on('broadcast', function(data) {
         chrome.tabs.sendMessage(tabid, data);
     });
+    socket.on('roomClosed', function(data) {
+        chrome.tabs.sendMessage(tabid, {action: 'roomClosed'});
+    });
 }
 
 chrome.extension.onMessage.addListener(function (message, sender, sendResponse) {
-    var socket = sender.tab && sockets[sender.tab.id];
+    var socket = sockets[message.tabid] || (sender.tab && sockets[sender.tab.id]);
     switch (message.action) {
         case 'createRoom':
             chrome.tabs.query({active: true, currentWindow: true}, function (tab) {
@@ -119,11 +103,11 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
                 createRoom(tab[0].id, message.room);
             });
             break;
-        case 'joinRoomBtn':
-            chrome.tabs.create({ url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
-            break;
         case 'joinRoom':
             joinRoom(sender.tab.id, message.room, message.name);
+            break;
+        case 'joinRoomBtn':
+            chrome.tabs.create({ url: chrome.extension.getURL('client.html#' + message.room + '&' +message.name) });
             break;
         case 'broadcast':
             if (window.logbroadcast)
@@ -133,47 +117,38 @@ chrome.extension.onMessage.addListener(function (message, sender, sendResponse) 
                 socket.emit('broadcast', message.payload);
             }
             break;
-        case 'emit':
-            if (socket) {
-                message.payload.sender = clientIds[sender.tab.id];
-                socket.emit(message.event, message.payload);
-            }
-            break;
-        case 'updateScreen':
-            if (socket) {
-                console.log('update screen la');
-                chrome.tabs.captureVisibleTab(sender.tab.windowId, {}, function(dataUrl) {
-                    socket.emit('pageimage', { source: dataUrl });
-                });
-            }
-            break;
         case 'updateHTML':
             if (socket) {
-                console.log('update HTML source');
-                socket.emit('htmlsource', { source: message.source });
+                console.log('update HTML source', message.bundle);
+                socket.emit('htmlsource', message.bundle);
             }
             break;
-        // case 'sendEvent':
-        //     // console.log('sendevent', message.eventString);
-        //     socket.emit('action', message.eventString);
+        case 'closeRoom':
+            // console.log('close room message', socket, message, sockets);
+            if (socket) {
+                socket.emit('closeRoom', {sender: clientIds[message.tabid]});
+            }
+            break;
+        // case 'emit':
+        //     if (socket) {
+        //         message.payload.sender = clientIds[sender.tab.id];
+        //         socket.emit(message.event, message.payload);
+        //     }
         //     break;
-        // case 'getCurrentURL':
-        //     sendResponse(currentURL);
-        //     break;
-        // case 'shouldStart':
-        //     sendResponse(sender.tab.id in sockets);
+        // case 'updateScreen':
+        //     if (socket) {
+        //         chrome.tabs.captureVisibleTab(sender.tab.windowId, {}, function(dataUrl) {
+        //             socket.emit('pageimage', { source: dataUrl });
+        //         });
+        //     }
         //     break;
     }
 });
 
-chrome.tabs.onUpdated.addListener(function (tabid, changeInfo, tab) {
-    if (tabid in sockets) {
-        sockets[tabid].emit('action', JSON.stringify({ type:'locationchange', url: changeInfo.url }));
+// chrome.tabs.onUpdated.addListener(function (tabid, changeInfo, tab) {
+//     if (tabid in sockets) {
+//         sockets[tabid].emit('action', JSON.stringify({ type:'locationchange', url: changeInfo.url }));
 
-        // chrome.tabs.executeScript(tab.id, { file: 'jquery.js' });
-        // chrome.tabs.executeScript(tab.id, { file: 'socket.io.js' });
-        // chrome.tabs.executeScript(tab.id, { file: 'inject.js' });
-
-        if (changeInfo.url) currentURL = changeInfo.url;
-    }
-});
+//         if (changeInfo.url) currentURL = changeInfo.url;
+//     }
+// });

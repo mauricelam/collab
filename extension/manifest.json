@@ -3,14 +3,6 @@
   "version": "0.1",
   "manifest_version": 2,
   "description": "Collaboratively surf the web. ",
-  //"content_scripts":[
-  //  {
-  //      "matches": [ "http://*/*", "https://*/*", "*://*/*" ],
-  //      "js": ["jquery.js", "inject.js"],
-  //      "css": ["styles.css"],
-  //      "run_at": "document_start"
-  //  }
-  //],
   "browser_action": {
     "default_icon": {                    // optional
       "19": "images/button.png",           // optional
